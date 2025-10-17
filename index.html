@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>運費計算｜可疊單與刪除功能</title>
+  <style>
+    :root {
+      --bg: #eaf6ff;
+      --card: #ffffff;
+      --ink: #1a2b3c;
+      --muted: #5c6b7b;
+      --accent: #5da9ff;
+      --border: #cde7ff;
+      --danger: #ff5d5d;
+    }
+    body {
+      margin: 0; font-family: 'Noto Sans TC', sans-serif;
+      background: linear-gradient(180deg, #b3e5ff 0%, #eaf6ff 100%);
+      color: var(--ink);
+    }
+    .wrap { max-width: 900px; margin: 40px auto; padding: 0 16px; }
+    .title { font-weight: 800; font-size: 32px; color: #0078d7; }
+    .subtitle { color: var(--muted); margin-top: 4px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: 0 8px 20px rgba(0, 120, 215, 0.15); margin-bottom: 16px; }
+    .field { display: grid; gap: 6px; margin-bottom: 12px; }
+    label { font-size: 14px; color: var(--muted); }
+    input[type="number"] {
+      padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: #f8fcff; color: var(--ink);
+      outline: none; transition: border .2s, box-shadow .2s;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(93,169,255,0.18); }
+    .btn { background: #5da9ff; color: white; border: none; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 700; margin-top: 8px; }
+    .btn:hover { background: #0078d7; }
+    .btn-del { background: var(--danger); color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .btn-del:hover { background: #d13b3b; }
+    .total-area { background: white; padding: 16px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    .total-area h2 { color: #0078d7; }
+    .list { margin-top: 16px; }
+    .list-item { background: #f8fcff; border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">運費計算</div>
+    <div class="subtitle">公式：<strong>基礎費 × 倍率</strong> ＋ 超過 <strong>2.5 公里</strong> 每公里加收 <strong>$10</strong></div>
+
+    <div class="card">
+      <div class="field">
+        <label for="base">基礎費（可自訂，預設30）</label>
+        <input id="base" type="number" inputmode="decimal" step="1" min="0" value="30" />
+      </div>
+      <div class="field">
+        <label for="mult">倍率</label>
+        <input id="mult" type="number" inputmode="decimal" step="0.1" min="0" value="1.4" />
+      </div>
+      <div class="field">
+        <label for="dist">距離（公里）</label>
+        <input id="dist" type="number" inputmode="decimal" step="0.1" min="0" value="2.5" />
+      </div>
+      <button class="btn" id="addOrder">新增一單</button>
+    </div>
+
+    <div class="total-area">
+      <h2 id="grandTotal">總金額：$0</h2>
+      <div class="list" id="orderList"></div>
+    </div>
+  </div>
+
+  <script>
+    const baseEl = document.querySelector('#base');
+    const multEl = document.querySelector('#mult');
+    const distEl = document.querySelector('#dist');
+    const addBtn = document.querySelector('#addOrder');
+    const orderList = document.querySelector('#orderList');
+    const grandTotalEl = document.querySelector('#grandTotal');
+
+    const THRESHOLD_KM = 2.5;
+    const EXTRA_PER_KM = 10;
+    let orders = [];
+
+    function fmtMoney(n){
+      return new Intl.NumberFormat('zh-Hant-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(n);
+    }
+
+    function calcOne(base, mult, dist){
+      const baseFee = base * mult;
+      const overKm = Math.max(0, dist - THRESHOLD_KM);
+      const overFee = overKm * EXTRA_PER_KM;
+      return Math.round(baseFee + overFee);
+    }
+
+    function renderList(){
+      orderList.innerHTML = '';
+      let total = 0;
+      orders.forEach((o, i) => {
+        total += o.total;
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.innerHTML = `
+          <span>第${i+1}單：基礎${o.base} × 倍率${o.mult}，距離${o.dist}km</span>
+          <div>
+            <strong>${fmtMoney(o.total)}</strong>
+            <button class="btn-del" data-index="${i}">刪除</button>
+          </div>`;
+        orderList.appendChild(item);
+      });
+      grandTotalEl.textContent = `總金額：${fmtMoney(total)}`;
+
+      document.querySelectorAll('.btn-del').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = Number(e.target.dataset.index);
+          orders.splice(idx, 1);
+          renderList();
+        });
+      });
+    }
+
+    addBtn.addEventListener('click', () => {
+      const base = Number(baseEl.value || 0);
+      const mult = Number(multEl.value || 0);
+      const dist = Number(distEl.value || 0);
+      const total = calcOne(base, mult, dist);
+      orders.push({ base, mult, dist, total });
+      renderList();
+    });
+  </script>
+</body>
+</html>
